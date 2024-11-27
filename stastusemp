@@ -1,0 +1,50 @@
+import pandas as pd
+
+def check_employee_status_conflicts(df):
+    """
+    Check for employees who have both active (N) and deleted (Y) status
+    for the same employee type.
+    
+    Parameters:
+    df (pandas.DataFrame): DataFrame with columns 'empid', 'emp_type', and 'deleted_flag'
+    
+    Returns:
+    pandas.DataFrame: DataFrame containing conflicts
+    """
+    # Group by empid and emp_type and aggregate deleted_flag values
+    conflicts = df.groupby(['empid', 'emp_type'])['deleted_flag'].agg(list).reset_index()
+    
+    # Find groups that have both 'Y' and 'N' flags
+    conflicts['has_conflict'] = conflicts['deleted_flag'].apply(
+        lambda x: 'Y' in x and 'N' in x
+    )
+    
+    # Filter only conflicts and create summary
+    conflicts = conflicts[conflicts['has_conflict']].copy()
+    
+    if len(conflicts) > 0:
+        conflicts['has_deleted'] = conflicts['deleted_flag'].apply(lambda x: 'Yes' if 'Y' in x else 'No')
+        conflicts['has_active'] = conflicts['deleted_flag'].apply(lambda x: 'Yes' if 'N' in x else 'No')
+        conflicts['status'] = 'Conflict Found'
+        
+        # Clean up the result
+        return conflicts[['empid', 'emp_type', 'status', 'has_deleted', 'has_active']]
+    else:
+        return pd.DataFrame(columns=['empid', 'emp_type', 'status', 'has_deleted', 'has_active'])
+
+# Example usage
+if __name__ == "__main__":
+    # Create sample data
+    data = {
+        'empid': [100, 100, 100, 101, 102, 102],
+        'emp_type': ['T1', 'T1', 'T2', 'T1', 'T1', 'T1'],
+        'deleted_flag': ['Y', 'N', 'N', 'Y', 'Y', 'Y']
+    }
+    
+    df = pd.DataFrame(data)
+    
+    print("Original Data:")
+    print(df)
+    print("\nConflicts Found:")
+    result = check_employee_status_conflicts(df)
+    print(result)
